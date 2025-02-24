@@ -196,6 +196,7 @@ app.post('/api/admin-data', async (req, res) => {
 
         // Calculate stats
         const totalUsers = users.users.length;
+        const verifiedUsers = users.users.filter(u => u.verified).length;
         const activeUsers = users.users.filter(u => {
             const lastLogin = new Date(u.lastLogin);
             const today = new Date();
@@ -206,12 +207,95 @@ app.post('/api/admin-data', async (req, res) => {
             success: true,
             adminData: {
                 email: admin.email,
-                lastLogin: admin.lastLogin
+                lastLogin: admin.lastLogin,
+                role: admin.role
             },
             stats: {
                 totalUsers,
-                activeUsers
+                activeUsers,
+                verifiedUsers
+            },
+            users: users.users // Send all users data
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get users list endpoint
+app.get('/api/users-list', async (req, res) => {
+    try {
+        const users = await readJSONFile('users.json');
+        res.json({ success: true, users: users.users });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get activity logs endpoint
+app.get('/api/activity-logs', async (req, res) => {
+    try {
+        // You might want to create a separate logs.json file
+        const logs = [
+            {
+                email: 'user@example.com',
+                action: 'Login successful',
+                timestamp: new Date().toISOString()
+            },
+            // Add more log entries as needed
+        ];
+        res.json({ success: true, logs });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get user details endpoint
+app.post('/api/user-details', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const users = await readJSONFile('users.json');
+        const user = users.users.find(u => u.email === email);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        res.json({
+            success: true,
+            userDetails: {
+                email: user.email,
+                verified: user.verified,
+                createdAt: user.createdAt,
+                lastLogin: user.lastLogin
             }
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Toggle user status endpoint
+app.post('/api/toggle-user-status', async (req, res) => {
+    try {
+        const { email, newStatus } = req.body;
+        const users = await readJSONFile('users.json');
+        const user = users.users.find(u => u.email === email);
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.verified = newStatus;
+        await writeJSONFile('users.json', users);
+
+        res.json({
+            success: true,
+            message: `User status updated to ${newStatus ? 'verified' : 'unverified'}`
         });
     } catch (error) {
         console.error('Error:', error);
