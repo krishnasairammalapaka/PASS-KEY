@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PASS-KEY</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900">
+    <div class="min-h-screen">
+        <!-- Updated navbar with fixed positioning and better styling -->
+        <nav class="bg-gray-800 shadow-lg fixed top-0 left-0 right-0 z-50">
+            <div class="max-w-7xl mx-auto px-4">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex-shrink-0">
+                        <h1 class="text-2xl font-bold text-blue-500">PASS-KEY</h1>
+                    </div>
+                    <div class="ml-auto">
+                        <button onclick="logout()" 
+                            class="bg-transparent hover:bg-red-600 text-red-500 hover:text-white px-4 py-2 rounded-lg text-sm font-semibold border border-red-500 hover:border-transparent transition-all duration-300">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Updated main content with proper spacing from fixed navbar -->
+        <main class="pt-20 max-w-7xl mx-auto px-4 py-8">
+            <div class="bg-gray-800 rounded-xl shadow-2xl p-6">
+                <h2 class="text-2xl font-bold text-white mb-6">Welcome to your Dashboard</h2>
+                
+                <div class="grid gap-6 md:grid-cols-2">
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-400">Email</p>
+                        <p id="userDisplayEmail" class="text-lg font-semibold text-white"></p>
+                    </div>
+                    
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-400">Last Login</p>
+                        <p id="lastLogin" class="text-lg font-semibold text-white"></p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="./script.js"></script>
+    <script>
+        // Check authentication on page load
+        (async function() {
+            const email = getSession();
+            const isAuthenticated = sessionStorage.getItem('authenticated');
+            
+            if (!email || !isAuthenticated) {
+                window.location.href = '/';  // Updated path
+                return;
+            }
+            
+            if (await checkAuth()) {
+                loadUserData();
+            }
+        })();
+    </script>
+</body>
+</html>

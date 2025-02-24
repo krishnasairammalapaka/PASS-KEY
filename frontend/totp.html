@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Authentication - PASS-KEY</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-blue-500">Verification Required</h2>
+                <p class="text-gray-400 mt-2">Enter the code from your authenticator app</p>
+            </div>
+
+            <div class="space-y-6">
+                <div class="text-center">
+                    <p class="text-gray-400">Email:</p>
+                    <p id="userEmail" class="text-lg font-semibold text-white"></p>
+                </div>
+
+                <div id="totpForm" class="space-y-4">
+                    <input type="text" id="totp" 
+                        class="bg-gray-700 w-full rounded-lg border border-gray-600 p-4 text-center text-xl tracking-widest text-white focus:outline-none focus:border-blue-500"
+                        placeholder="000000" maxlength="6" pattern="[0-9]*">
+                    
+                    <button onclick="verifyTOTP()" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                        Verify Code
+                    </button>
+                </div>
+
+                <div id="errorMessage" class="text-red-500 text-sm text-center hidden"></div>
+            </div>
+        </div>
+    </div>
+    <script src="./script.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const email = getSession();
+            if (!email) {
+                window.location.href = '/';
+                return;
+            }
+            document.getElementById('userEmail').textContent = email;
+        });
+
+        async function verifyTOTP() {
+            const email = getSession();
+            const token = document.getElementById('totp').value;
+            
+            if (!/^\d{6}$/.test(token)) {
+                showError('Please enter a valid 6-digit code');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, token })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success) {
+                        sessionStorage.setItem('authenticated', 'true');
+                        window.location.href = '/dashboard';  // Updated path
+                    } else {
+                        showError(data.message || 'Invalid verification code');
+                    }
+                } else {
+                    showError('Verification failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Verification failed');
+            }
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

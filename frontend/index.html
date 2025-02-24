@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PASS-KEY Authentication</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900">
+    <div class="min-h-screen flex items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-blue-500">PASS-KEY</h2>
+                <p class="text-gray-400 mt-2">Secure Authentication System</p>
+            </div>
+            
+            <div id="loginForm" class="space-y-6">
+                <div>
+                    <label class="text-gray-300 text-sm font-semibold mb-2 block">Email Address</label>
+                    <input type="email" id="email" 
+                        class="bg-gray-700 w-full rounded-lg border border-gray-600 p-3 text-white focus:outline-none focus:border-blue-500"
+                        placeholder="Enter your email">
+                </div>
+                <button onclick="handleLogin()" 
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                    Continue
+                </button>
+            </div>
+
+            <div id="qrSection" class="hidden space-y-6 mt-8">
+                <h3 class="text-xl font-semibold text-gray-300">Scan QR Code</h3>
+                <div class="bg-white p-4 rounded-lg inline-block">
+                    <img id="qrCode" src="" alt="QR Code" class="mx-auto">
+                </div>
+                <div class="text-gray-400 text-sm">
+                    <p>Manual entry code:</p>
+                    <code id="secretCode" class="block mt-2 p-2 bg-gray-700 rounded text-blue-400 font-mono"></code>
+                </div>
+                <div id="verificationSection" class="space-y-4">
+                    <input type="text" id="token" 
+                        class="bg-gray-700 w-full rounded-lg border border-gray-600 p-3 text-white focus:outline-none focus:border-blue-500"
+                        placeholder="Enter 6-digit code" maxlength="6" pattern="[0-9]*">
+                    <button onclick="verifyToken()" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200">
+                        Verify
+                    </button>
+                </div>
+                <div id="errorMessage" class="text-red-500 text-sm hidden"></div>
+            </div>
+        </div>
+    </div>
+    <script src="./script.js"></script>
+</body>
+</html>

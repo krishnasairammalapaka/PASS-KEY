@@ -1,0 +1,25 @@
+{
+  "users": [
+    {
+      "email": "john.doe@example.com",
+      "secret": "JBSWY3DPEHPK3PXP",
+      "verified": true,
+      "createdAt": "2023-11-01T10:30:00.000Z",
+      "lastLogin": "2023-11-15T08:45:23.000Z"
+    },
+    {
+      "email": "alice.smith@example.com",
+      "secret": "KRSXG5CTMVRXEZLU",
+      "verified": true,
+      "createdAt": "2023-11-05T15:20:00.000Z",
+      "lastLogin": "2023-11-14T19:12:45.000Z"
+    },
+    {
+      "email": "santhosh@example.com",
+      "secret": "GEZDGNBVGY3TQOJQ",
+      "verified": true,
+      "createdAt": "2023-11-10T09:15:00.000Z",
+      "lastLogin": "2025-02-24T11:39:40.486Z"
+    }
+  ]
+}
