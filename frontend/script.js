@@ -1,234 +1,140 @@
 const API_URL = 'http://localhost:3000/api';
 
+// Basic utility functions
 function showError(message) {
-    const errorContainer = document.getElementById('errorContainer');
-    errorContainer.textContent = message;
-    errorContainer.classList.remove('hidden');
+    const errorMessage = document.getElementById('errorMessage');
+    errorMessage.textContent = message;
+    errorMessage.classList.remove('hidden');
+    setTimeout(() => {
+        errorMessage.classList.add('hidden');
+    }, 3000);
 }
 
-// Session handling
-function setSession(email) {
-    localStorage.setItem('userEmail', email);
-}
-
-function getSession() {
-    return localStorage.getItem('userEmail');
+function setSession(email, userType) {
+    sessionStorage.setItem('userEmail', email);
+    sessionStorage.setItem('userType', userType);
 }
 
 function clearSession() {
-    localStorage.removeItem('userEmail');
+    sessionStorage.clear();
 }
 
-// Authentication check
-async function checkAuth() {
-    const email = getSession();
-    if (!email || !sessionStorage.getItem('authenticated')) {
-        window.location.href = '/';
-        return false;
-    }
-
-    try {
-        const response = await fetch('/api/validate-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
-        
-        const data = await response.json();
-        if (!data.success) {
-            window.location.href = '/';
-            return false;
-        }
-        return true;
-    } catch (error) {
-        console.error('Auth check error:', error);
-        window.location.href = '/';
-        return false;
-    }
-}
-
-async function logout() {
-    clearSession();
-    sessionStorage.removeItem('authenticated');
-    window.location.href = '/';
-}
-
-// Load user data for dashboard
-async function loadUserData() {
-    const email = getSession();
-    if (!email || !sessionStorage.getItem('authenticated')) return;
-
-    try {
-        const response = await fetch('/api/user-data', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
-        
-        const data = await response.json();
-        if (data.success) {
-            document.getElementById('userDisplayEmail').textContent = data.userData.email;
-            document.getElementById('lastLogin').textContent = new Date(data.userData.lastLogin).toLocaleString();
-        }
-    } catch (error) {
-        console.error('Error loading user data:', error);
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Handle login form
-    const loginForm = document.getElementById('loginForm');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const email = document.getElementById('email').value;
-            setSession(email);
-
-            try {
-                const response = await fetch(`${API_URL}/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    if (data.isNewUser && data.qrCode) {
-                        const qrContainer = document.getElementById('qrContainer');
-                        qrContainer.innerHTML = `
-                            <div class="space-y-6">
-                                <div>
-                                    <p class="text-sm text-gray-600">
-                                        1. Install Microsoft Authenticator on your phone
-                                    </p>
-                                    <p class="text-sm text-gray-600">
-                                        2. Scan this QR code with the app:
-                                    </p>
-                                    <div class="mt-4 flex justify-center">
-                                        <img src="${data.qrCode}" alt="QR Code" class="w-48 h-48">
-                                    </div>
-                                </div>
-                                <div>
-                                    <p class="text-sm text-gray-600">
-                                        Or manually enter this code in your authenticator app:
-                                    </p>
-                                    <code class="block mt-2 p-2 bg-gray-100 rounded text-center select-all">
-                                        ${data.secret}
-                                    </code>
-                                </div>
-                                <button onclick="proceedToTOTP()" 
-                                        class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                                    I've scanned the code
-                                </button>
-                            </div>
-                        `;
-                    } else {
-                        window.location.href = 'totp.html';
-                    }
-                }
-            } catch (error) {
-                showError('An error occurred. Please try again.');
-            }
-        });
-    }
-
-    // Handle TOTP verification
-    const totpForm = document.getElementById('totpForm');
-    if (totpForm) {
-        const userEmail = getSession();
-        if (!userEmail) {
-            window.location.href = 'index.html';
-            return;
-        }
-
-        document.getElementById('userEmail').textContent = userEmail;
-
-        totpForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            const token = document.getElementById('totp').value;
-            
-            try {
-                const response = await fetch(`${API_URL}/verify`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: userEmail,
-                        token: token
-                    })
-                });
-                const data = await response.json();
-                
-                if (data.success) {
-                    sessionStorage.setItem('authenticated', 'true');
-                    window.location.href = 'dashboard.html';
-                } else {
-                    alert('Invalid authentication code. Please try again.');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred. Please try again.');
-            }
-        });
-    }
-
-    // Handle dashboard
-    const userDisplayEmail = document.getElementById('userDisplayEmail');
-    if (userDisplayEmail) {
-        if (!sessionStorage.getItem('authenticated')) {
-            window.location.href = 'index.html';
-            return;
-        }
-        
-        loadUserData();
-    }
-});
-
-// Update navigation functions
 async function handleLogin() {
     const email = document.getElementById('email').value;
+    if (!email) {
+        showError('Please enter an email address');
+        return;
+    }
+    
     try {
-        const response = await fetch('/api/register', {
+        // First check if it's an admin
+        const response = await fetch(`${API_URL}/check-email`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({ email })
         });
+
         const data = await response.json();
         
-        if (data.success) {
-            setSession(email);
-            if (data.verified) {
-                window.location.href = '/totp';  // Updated path
-            } else {
-                displayQRCode(data.qrCode, data.secret);
-            }
+        if (!data.success) {
+            showError('User not found');
+            return;
         }
+
+        // Store user information
+        setSession(email, data.userType);
+
+        // Show QR section or TOTP input based on verification status
+        if (!data.verified) {
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('qrSection').classList.remove('hidden');
+            
+            // Generate QR code for unverified users
+            const qrResponse = await fetch(`${API_URL}/generate-qr`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, userType: data.userType })
+            });
+
+            const qrData = await qrResponse.json();
+            document.getElementById('qrCode').src = qrData.qrCode;
+            document.getElementById('secretCode').textContent = qrData.secret;
+        } else {
+            // For verified users, show only TOTP input
+            document.getElementById('loginForm').classList.add('hidden');
+            document.getElementById('qrSection').classList.remove('hidden');
+            document.querySelector('.bg-white.p-4').style.display = 'none';
+            document.querySelector('.text-gray-400.text-sm').style.display = 'none';
+        }
+
     } catch (error) {
-        console.error('Error:', error);
-        showError('Error during login/registration');
+        console.error('Login error:', error);
+        showError('An error occurred during login');
     }
 }
 
 async function verifyToken() {
-    // ...existing verification code...
-    if (data.success) {
-        sessionStorage.setItem('authenticated', 'true');
-        window.location.href = '/dashboard';  // Updated path
+    const token = document.getElementById('token').value;
+    const email = sessionStorage.getItem('userEmail');
+    const userType = sessionStorage.getItem('userType');
+
+    if (!token || token.length !== 6) {
+        showError('Please enter a valid 6-digit code');
+        return;
     }
-    // ...rest of the code...
+
+    try {
+        const response = await fetch(`${API_URL}/verify-token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, token, userType })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            sessionStorage.setItem('authenticated', 'true');
+            
+            // Redirect based on user type
+            if (userType === 'admin') {
+                window.location.href = '/admin-dashboard';
+            } else {
+                window.location.href = '/user-dashboard';
+            }
+        } else {
+            showError(result.message || 'Invalid verification code');
+        }
+    } catch (error) {
+        console.error('Verification error:', error);
+        showError('An error occurred during verification');
+    }
 }
 
-async function logout() {
+function logout() {
     clearSession();
-    sessionStorage.removeItem('authenticated');
-    window.location.href = '/';  // Updated path
+    window.location.href = 'index.html';
 }
 
-// Update checkAuth redirect
-async function checkAuth() {
-    const email = getSession();
-    if (!email || !sessionStorage.getItem('authenticated')) {
-        window.location.href = '/';  // Updated path
-        return false;
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    // Clear any existing session data on the login page
+    if (window.location.pathname === '/index.html' || window.location.pathname === '/') {
+        clearSession();
     }
-    // ...rest of the code...
-}
+    
+    // Check authentication for dashboard pages
+    if (window.location.pathname.includes('dashboard')) {
+        const authenticated = sessionStorage.getItem('authenticated');
+        if (!authenticated) {
+            window.location.href = 'index.html';
+        }
+    }
+});
+
+

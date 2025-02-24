@@ -1,245 +1,174 @@
 const express = require('express');
-const speakeasy = require('speakeasy');
-const QRCode = require('qrcode');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 const fs = require('fs').promises;
 const path = require('path');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 
 const app = express();
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST'],
-    credentials: true
-}));
-app.use(bodyParser.json());
+const PORT = 3000;
 
-// Update static file serving
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Serve static files from the frontend directory
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// Update route handlers - add these before other routes
+// Serve index.html for the root route
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
-app.get('/dashboard', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dashboard.html'));
+// Serve other HTML files
+app.get('/admin-dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/admin-dashboard.html'));
 });
 
-app.get('/totp', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/totp.html'));
+app.get('/user-dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/user-dashboard.html'));
 });
 
-// Add catch-all route for undefined routes
-app.get('*', (req, res) => {
-    res.redirect('/');
-});
-
-const USERS_FILE = path.join(__dirname, 'users.json');
-
-// Helper function to read users
-async function readUsers() {
-    try {
-        const data = await fs.readFile(USERS_FILE, 'utf8');
-        return JSON.parse(data).users;
-    } catch (error) {
-        return [];
-    }
+// Helper function to read JSON files
+async function readJSONFile(filename) {
+    const data = await fs.readFile(path.join(__dirname, filename), 'utf8');
+    return JSON.parse(data);
 }
 
-// Helper function to write users
-async function writeUsers(users) {
-    await fs.writeFile(USERS_FILE, JSON.stringify({ users }, null, 2));
+// Helper function to write JSON files
+async function writeJSONFile(filename, data) {
+    await fs.writeFile(
+        path.join(__dirname, filename),
+        JSON.stringify(data, null, 2),
+        'utf8'
+    );
 }
 
-// Update the register endpoint to always return QR code for unverified users
-app.post('/api/register', async (req, res) => {
+// Check email endpoint
+app.post('/api/check-email', async (req, res) => {
     try {
         const { email } = req.body;
-        const users = await readUsers();
-        let user = users.find(u => u.email === email);
-        
-        if (!user) {
-            // Generate secret with correct parameters for Microsoft Authenticator
-            const secret = speakeasy.generateSecret({
-                length: 20,
-                name: email,
-                issuer: 'PASS-KEY'
-            });
+        const admins = await readJSONFile('admins.json');
+        const users = await readJSONFile('users.json');
 
-            // Create a properly formatted otpauth URL
-            const otpauthUrl = `otpauth://totp/${encodeURIComponent('PASS-KEY')}:${encodeURIComponent(email)}?secret=${secret.base32}&issuer=${encodeURIComponent('PASS-KEY')}&algorithm=SHA1&digits=6&period=30`;
-
-            user = {
-                email,
-                secret: secret.base32,
-                verified: false,
-                createdAt: new Date().toISOString()
-            };
-
-            users.push(user);
-            await writeUsers(users);
-
-            const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
-            
-            console.log('Generated secret:', secret.base32); // For debugging
-            console.log('OTPAuth URL:', otpauthUrl); // For debugging
-
-            res.json({
+        // Check if email exists in admins
+        const admin = admins.admins.find(a => a.email === email);
+        if (admin) {
+            return res.json({
                 success: true,
-                verified: false,
-                qrCode: qrCodeUrl,
-                secret: secret.base32,
-                otpauthUrl // For debugging
-            });
-        } else if (!user.verified) {
-            // Handle existing unverified user
-            const otpauthUrl = `otpauth://totp/${encodeURIComponent('PASS-KEY')}:${encodeURIComponent(email)}?secret=${user.secret}&issuer=${encodeURIComponent('PASS-KEY')}&algorithm=SHA1&digits=6&period=30`;
-            const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
-            
-            res.json({
-                success: true,
-                verified: false,
-                qrCode: qrCodeUrl,
-                secret: user.secret,
-                otpauthUrl // For debugging
-            });
-        } else {
-            // For verified users, just return success with verified status
-            res.json({
-                success: true,
-                verified: true,
-                message: 'Please enter your authentication code'
+                userType: 'admin',
+                verified: admin.verified
             });
         }
+
+        // Check if email exists in users
+        const user = users.users.find(u => u.email === email);
+        if (user) {
+            return res.json({
+                success: true,
+                userType: 'user',
+                verified: user.verified
+            });
+        }
+
+        res.json({ success: false });
     } catch (error) {
-        console.error('Registration error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Server error',
-            error: error.message 
-        });
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// Add a new endpoint to get QR code for existing users
-app.post('/api/get-qr', async (req, res) => {
+// Generate QR code endpoint
+app.post('/api/generate-qr', async (req, res) => {
     try {
-        const { email } = req.body;
-        const users = await readUsers();
+        const { email, userType } = req.body;
+        const filename = userType === 'admin' ? 'admins.json' : 'users.json';
+        const data = await readJSONFile(filename);
+        
+        const users = data[userType === 'admin' ? 'admins' : 'users'];
         const user = users.find(u => u.email === email);
 
         if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found'
-            });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        if (!user.verified) {
-            const otpauthUrl = speakeasy.otpauthURL({
-                secret: user.secret,
-                label: encodeURIComponent(email),
-                issuer: 'PASS-KEY',
-                algorithm: 'sha1'
-            });
-
-            const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
-            res.json({
-                success: true,
-                qrCode: qrCodeUrl,
-                secret: user.secret,
-                otpauthUrl: otpauthUrl
-            });
-        } else {
-            res.json({
-                success: true,
-                verified: true
-            });
-        }
-    } catch (error) {
-        console.error('QR Code generation error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Server error',
-            error: error.message
+        // Create the otpauth URL
+        const otpauthUrl = speakeasy.otpauthURL({
+            secret: user.secret,
+            label: encodeURIComponent(email),
+            issuer: 'PASS-KEY',
+            encoding: 'base32'
         });
+
+        // Generate QR code from the otpauth URL
+        const qrCode = await QRCode.toDataURL(otpauthUrl);
+
+        res.json({
+            success: true,
+            secret: user.secret,
+            qrCode: qrCode
+        });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// Update the verify endpoint
-app.post('/api/verify', async (req, res) => {
+// Verify token endpoint
+app.post('/api/verify-token', async (req, res) => {
     try {
-        const { email, token } = req.body;
+        const { email, token, userType } = req.body;
+        const filename = userType === 'admin' ? 'admins.json' : 'users.json';
+        const data = await readJSONFile(filename);
         
-        console.log('Verifying token:', { email, token }); // For debugging
-        
-        const users = await readUsers();
+        const users = data[userType === 'admin' ? 'admins' : 'users'];
         const user = users.find(u => u.email === email);
 
         if (!user) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'User not found' 
-            });
+            return res.status(404).json({ success: false, message: 'User not found' });
         }
 
-        console.log('User secret:', user.secret); // For debugging
-
-        // Verify TOTP with more specific parameters
+        // Verify TOTP token
         const verified = speakeasy.totp.verify({
             secret: user.secret,
             encoding: 'base32',
-            token: token.toString(), // Convert token to string
-            window: 2, // Allow 2 intervals before/after for time drift
-            step: 30, // 30-second steps
-            digits: 6 // 6-digit tokens
+            token: token,
+            window: 1 // Allow 1 step before and after current time
         });
 
-        console.log('Verification result:', verified); // For debugging
-
         if (verified) {
+            // Update user verification status and last login
             user.verified = true;
             user.lastLogin = new Date().toISOString();
-            await writeUsers(users);
-            
-            res.json({ 
+            await writeJSONFile(filename, data);
+
+            res.json({
                 success: true,
-                message: 'Authentication successful',
                 userData: {
                     email: user.email,
                     lastLogin: user.lastLogin
-                },
-                redirectUrl: '/dashboard.html'  // Add redirect URL to response
-            });
-        } else {
-            res.status(401).json({ 
-                success: false, 
-                message: 'Invalid authentication code',
-                debug: {
-                    providedToken: token,
-                    expectedLength: 6,
-                    timeWindow: 'Current time ±60 seconds'
                 }
             });
+        } else {
+            res.json({ success: false, message: 'Invalid verification code' });
         }
     } catch (error) {
-        console.error('Verification error:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Verification error',
-            error: error.message
-        });
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-// Add endpoint to get user data
+// Get user data endpoint
 app.post('/api/user-data', async (req, res) => {
-    const { email } = req.body;
-    const users = await readUsers();
-    const user = users.find(u => u.email === email);
+    try {
+        const { email } = req.body;
+        const users = await readJSONFile('users.json');
+        const user = users.users.find(u => u.email === email);
 
-    if (user && user.verified) {
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
         res.json({
             success: true,
             userData: {
@@ -247,27 +176,49 @@ app.post('/api/user-data', async (req, res) => {
                 lastLogin: user.lastLogin
             }
         });
-    } else {
-        res.status(401).json({ 
-            success: false,
-            message: 'Unauthorized access'
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+// Get admin data endpoint
+app.post('/api/admin-data', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const admins = await readJSONFile('admins.json');
+        const users = await readJSONFile('users.json');
+        const admin = admins.admins.find(a => a.email === email);
+
+        if (!admin) {
+            return res.status(404).json({ success: false, message: 'Admin not found' });
+        }
+
+        // Calculate stats
+        const totalUsers = users.users.length;
+        const activeUsers = users.users.filter(u => {
+            const lastLogin = new Date(u.lastLogin);
+            const today = new Date();
+            return lastLogin.toDateString() === today.toDateString();
+        }).length;
+
+        res.json({
+            success: true,
+            adminData: {
+                email: admin.email,
+                lastLogin: admin.lastLogin
+            },
+            stats: {
+                totalUsers,
+                activeUsers
+            }
         });
+    } catch (error) {
+        console.error('Error:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
 
-app.post('/api/validate-session', async (req, res) => {
-    const { email } = req.body;
-    const users = await readUsers();
-    const user = users.find(u => u.email === email);
-
-    if (user && user.verified) {
-        res.json({ success: true });
-    } else {
-        res.status(401).json({ success: false });
-    }
-});
-
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });

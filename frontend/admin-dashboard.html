@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - PASS-KEY</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-900">
+    <div class="min-h-screen">
+        <!-- Navigation Header -->
+        <nav class="bg-gray-800 border-b border-gray-700">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0">
+                            <h1 class="text-blue-500 text-2xl font-bold">PASS-KEY</h1>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <span id="adminEmail" class="text-gray-300 mr-4"></span>
+                        <button onclick="logout()" 
+                            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition duration-200">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+            <!-- Welcome Section -->
+            <div class="bg-gray-800 rounded-lg shadow p-6 mb-6">
+                <h2 class="text-2xl font-bold text-purple-500">Welcome, Admin</h2>
+                <p class="text-gray-400 mt-1">Last login: <span id="lastLoginTime"></span></p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div class="bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-gray-400 text-sm font-medium">Total Users</h3>
+                    <p class="text-3xl font-bold text-blue-500 mt-2" id="totalUsers">0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-gray-400 text-sm font-medium">Active Today</h3>
+                    <p class="text-3xl font-bold text-green-500 mt-2" id="activeUsers">0</p>
+                </div>
+                <div class="bg-gray-800 rounded-lg shadow p-6">
+                    <h3 class="text-gray-400 text-sm font-medium">Pending Verifications</h3>
+                    <p class="text-3xl font-bold text-yellow-500 mt-2" id="pendingVerifications">0</p>
+                </div>
+            </div>
+
+            <!-- User Management Section -->
+            <div class="bg-gray-800 rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-gray-300">User Management</h2>
+                    <button onclick="refreshUserList()" 
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200">
+                        Refresh List
+                    </button>
+                </div>
+
+                <!-- User Table -->
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Created At</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Last Login</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="userTableBody" class="bg-gray-800 divide-y divide-gray-700">
+                            <!-- User rows will be dynamically inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Activity Log Section -->
+            <div class="bg-gray-800 rounded-lg shadow p-6 mt-6">
+                <h2 class="text-xl font-bold text-gray-300 mb-4">Recent Activity</h2>
+                <div id="activityLog" class="space-y-3">
+                    <!-- Activity logs will be dynamically inserted here -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal for User Actions -->
+    <div id="userActionModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-gray-800 rounded-lg p-6 max-w-md w-full">
+            <h3 class="text-xl font-bold text-gray-300 mb-4" id="modalTitle">User Actions</h3>
+            <div id="modalContent" class="space-y-4">
+                <!-- Modal content will be dynamically inserted here -->
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="closeModal()" 
+                    class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition duration-200">
+                    Cancel
+                </button>
+                <button id="modalConfirmButton" 
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-200">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./admin-dashboard.js"></script>
+</body>
+</html> 

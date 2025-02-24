@@ -1,23 +1,31 @@
 {
-  "name": "pass-key-backend",
+  "name": "pass-key-auth",
   "version": "1.0.0",
-  "description": "TOTP Authentication System",
-  "main": "server.js",
+  "description": "PASS-KEY Authentication System",
+  "main": "backend/server.js",
   "scripts": {
-    "install-all": "npm install && cd backend && npm install",
-    "start-backend": "cd backend && node server.js",
-    "start": "npm run start-backend",
-    "dev": "nodemon backend/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node backend/server.js",
+    "dev": "nodemon backend/server.js"
   },
   "dependencies": {
-    "express": "^4.17.1",
-    "speakeasy": "^2.0.0",
-    "qrcode": "^1.4.4",
     "cors": "^2.8.5",
-    "body-parser": "^1.19.0"
+    "express": "^4.17.1",
+    "qrcode": "^1.4.4",
+    "speakeasy": "^2.0.0"
   },
   "devDependencies": {
-    "nodemon": "^3.0.2"
-  }
+    "nodemon": "^2.0.15"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/krishnasairammalapaka/PASS-KEY.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/krishnasairammalapaka/PASS-KEY/issues"
+  },
+  "homepage": "https://github.com/krishnasairammalapaka/PASS-KEY#readme"
 }
