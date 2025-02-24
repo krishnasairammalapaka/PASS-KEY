@@ -5,17 +5,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>User Dashboard - PASS-KEY</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+        import config from './config.js';
+        
+        // Initialize Supabase client globally
+        window.supabaseClient = createClient(config.supabaseUrl, config.supabaseAnonKey);
+    </script>
 </head>
 <body class="bg-gray-900">
     <div class="min-h-screen">
-        <nav class="bg-gray-800 border-b border-gray-700">
+        <!-- Navigation Header -->
+        <nav class="bg-gray-800 border-b border-gray-700 fixed w-full top-0 z-50">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex items-center justify-between h-16">
                     <div class="flex items-center">
-                        <h1 class="text-blue-500 text-2xl font-bold">PASS-KEY</h1>
+                        <h1 class="text-2xl font-bold text-blue-500">PASS-KEY</h1>
                     </div>
-                    <div class="flex items-center">
-                        <span id="userEmail" class="text-gray-300 mr-4"></span>
+                    <div class="flex items-center space-x-4">
+                        <span id="userEmail" class="text-gray-300"></span>
                         <button onclick="logout()" 
                             class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition duration-200">
                             Logout
@@ -25,13 +34,169 @@
             </div>
         </nav>
 
-        <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-            <div class="bg-gray-800 rounded-lg shadow p-6">
-                <h2 class="text-2xl font-bold text-blue-500">Welcome</h2>
-                <p class="text-gray-400 mt-1">Last login: <span id="lastLoginTime"></span></p>
+        <!-- Main Content -->
+        <main class="pt-20 pb-8 max-w-7xl mx-auto px-4">
+            <!-- User Info Card -->
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+                <h2 class="text-xl font-semibold text-gray-300 mb-4">Your Account Information</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-400">Email Address</p>
+                        <p id="displayEmail" class="text-lg font-semibold text-white"></p>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-400">Account Status</p>
+                        <div id="verificationStatus" class="mt-1"></div>
+                    </div>
+                    <div class="bg-gray-700 p-4 rounded-lg">
+                        <p class="text-gray-400">Member Since</p>
+                        <p id="createdAt" class="text-lg font-semibold text-white"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Security Key Section -->
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6 mb-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-semibold text-gray-300">Security Key</h2>
+                    <button onclick="regenerateKey()" 
+                        class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg transition duration-200">
+                        Regenerate Key
+                    </button>
+                </div>
+                <div class="bg-gray-700 p-4 rounded-lg">
+                    <p class="text-gray-400 mb-2">Your Current Security Key</p>
+                    <div class="flex items-center space-x-2">
+                        <code id="secretKey" class="text-lg font-mono bg-gray-800 px-3 py-1 rounded text-green-400"></code>
+                        <button onclick="copyToClipboard()" 
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded transition duration-200">
+                            Copy
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login History -->
+            <div class="bg-gray-800 rounded-xl shadow-lg p-6">
+                <h2 class="text-xl font-semibold text-gray-300 mb-6">Login History</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-700">
+                        <thead class="bg-gray-700">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                                    Date & Time
+                                </th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+                                    Status
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="loginHistoryBody" class="bg-gray-800 divide-y divide-gray-700">
+                            <!-- Login history will be dynamically inserted here -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </main>
     </div>
-    <script src="./user-dashboard.js"></script>
+
+    <script type="module">
+        // Use the global Supabase client
+        const supabase = window.supabaseClient;
+
+        // Function to load user data
+        async function loadUserData() {
+            try {
+                const currentUserEmail = sessionStorage.getItem('userEmail');
+                
+                // Fetch user data from Supabase
+                const { data: user, error } = await supabase
+                    .from('users')
+                    .select('*')
+                    .eq('email', currentUserEmail)
+                    .single();
+
+                if (error) throw error;
+
+                if (user) {
+                    // Update user information
+                    document.getElementById('userEmail').textContent = user.email;
+                    document.getElementById('displayEmail').textContent = user.email;
+                    document.getElementById('createdAt').textContent = new Date(user.created_at).toLocaleDateString();
+                    document.getElementById('secretKey').textContent = user.secret;
+
+                    // Update verification status
+                    const statusDiv = document.getElementById('verificationStatus');
+                    statusDiv.innerHTML = user.verified 
+                        ? '<span class="px-2 py-1 text-sm font-semibold bg-green-500 text-white rounded-full">Verified</span>'
+                        : '<span class="px-2 py-1 text-sm font-semibold bg-red-500 text-white rounded-full">Unverified</span>';
+
+                    // Add login history
+                    const loginHistoryBody = document.getElementById('loginHistoryBody');
+                    loginHistoryBody.innerHTML = `
+                        <tr>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                                ${new Date(user.last_login).toLocaleString()}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                <span class="px-2 py-1 text-xs font-semibold bg-green-500 text-white rounded-full">
+                                    Successful
+                                </span>
+                            </td>
+                        </tr>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading user data:', error);
+            }
+        }
+
+        // Function to regenerate key
+        async function regenerateKey() {
+            if (confirm('Are you sure you want to regenerate your security key? This will invalidate your current key.')) {
+                try {
+                    const currentUserEmail = sessionStorage.getItem('userEmail');
+                    const newSecret = generateNewSecret(); // Implement this function
+                    
+                    const { error } = await supabase
+                        .from('users')
+                        .update({ secret: newSecret })
+                        .eq('email', currentUserEmail);
+
+                    if (error) throw error;
+                    
+                    // Reload user data to show new key
+                    loadUserData();
+                } catch (error) {
+                    console.error('Error regenerating key:', error);
+                    alert('Failed to regenerate key. Please try again.');
+                }
+            }
+        }
+
+        // Function to copy security key to clipboard
+        function copyToClipboard() {
+            const secretKey = document.getElementById('secretKey').textContent;
+            navigator.clipboard.writeText(secretKey)
+                .then(() => alert('Security key copied to clipboard!'))
+                .catch(err => console.error('Failed to copy text:', err));
+        }
+
+        // Logout function
+        async function logout() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                
+                sessionStorage.removeItem('userEmail');
+                window.location.href = '/login.html';
+            } catch (error) {
+                console.error('Error during logout:', error);
+            }
+        }
+
+        // Load user data when page loads
+        document.addEventListener('DOMContentLoaded', loadUserData);
+    </script>
 </body>
 </html> 

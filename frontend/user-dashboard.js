@@ -1,3 +1,9 @@
+import { createClient } from '@supabase/supabase-js';
+import config from './config.js';
+
+// Initialize Supabase client
+const supabase = createClient(config.supabaseUrl, config.supabaseAnonKey);
+
 const API_URL = 'http://localhost:3000/api';
 
 // Check authentication on page load
@@ -12,26 +18,37 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 
     try {
-        const response = await fetch(`${API_URL}/user-data`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email })
-        });
+        // Use Supabase to fetch user data
+        const { data: userData, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('email', email)
+            .single();
 
-        const data = await response.json();
-        if (data.success) {
-            document.getElementById('userEmail').textContent = data.userData.email;
+        if (error) throw error;
+
+        if (userData) {
+            document.getElementById('userEmail').textContent = userData.email;
             document.getElementById('lastLoginTime').textContent = 
-                new Date(data.userData.lastLogin).toLocaleString();
+                new Date(userData.last_login).toLocaleString();
         }
     } catch (error) {
         console.error('Error loading user data:', error);
     }
 });
 
-function logout() {
-    sessionStorage.clear();
-    window.location.href = 'index.html';
-} 
+async function logout() {
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+    } catch (error) {
+        console.error('Error during logout:', error);
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+    }
+}
+
+export { logout }; 

@@ -5,7 +5,7 @@
       "secret": "KRSXG5CTMVRXEZLU",
       "verified": true,
       "createdAt": "2023-11-05T15:20:00.000Z",
-      "lastLogin": "2025-02-24T13:24:07.490Z"
+      "lastLogin": "2025-02-24T14:32:07.587Z"
     },
     {
       "email": "john.doe@example.com",
@@ -24,7 +24,7 @@
     {
       "email": "michael.brown@example.com",
       "secret": "GEZDGNBVGY3TQOJR",
-      "verified": false,
+      "verified": true,
       "createdAt": "2024-02-22T11:20:00.000Z",
       "lastLogin": "2024-02-22T11:20:00.000Z"
     },
@@ -38,7 +38,7 @@
     {
       "email": "david.miller@example.com",
       "secret": "KVKFKVDZEBSG4Y3P",
-      "verified": false,
+      "verified": true,
       "createdAt": "2024-02-24T08:30:00.000Z",
       "lastLogin": "2024-02-24T08:30:00.000Z"
     }
